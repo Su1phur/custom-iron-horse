@@ -246,17 +246,11 @@ def main():
         speeds={
             "RAIL": {
                 # gen 5 and 6 held down by design, really fast freight is imbalanced
-                "standard": [
-                    45,
-                    45,
-                    60,
-                    75,
-                    87,
-                    87,
-                ],
+                "standard": [45, 45, 60, 75, 87, 87],
                 # match standard, except gen 6
                 "suburban": [45, 45, 60, 75, 87, 99],
                 # smaller steps in gen 5 and 6, balances against faster HSTs
+<<<<<<< HEAD
                 "express": [
                     60,
                     75,
@@ -277,18 +271,21 @@ def main():
                 "hst_on_lgv": [0, 0, 0, 0, 140, 140],
                 "very_high_speed": [0, 0, 0, 0, 128, 128],
                 "very_high_speed_on_lgv": [0, 0, 0, 0, 155, 186],
+=======
+                "express": [60, 75, 90, 105, 120, 120],
+                "express_on_lgv": [0, 0, 0, 0, 140, 140],
+                "hst": [0, 0, 0, 112, 128, 128],  # CABBAGE
+                "hst_on_lgv": [0, 0, 0, 0, 140, 140],  # CABBAGE
+                "very_high_speed": [0, 0, 0, 0, 128, 128],  # CABBAGE
+                "very_high_speed_on_lgv": [0, 0, 0, 0, 155, 186],  # CABBAGE
+>>>>>>> 4decfcefd (Visibility Edit)
             },
             "METRO": {
                 "standard": [45, 55, 65]
                 # only standard for metro in Pony
             },
             "NG": {
-                "standard": [
-                    45,
-                    45,
-                    60,
-                    60,
-                ],
+                "standard": [45, 45, 60, 60],
                 # NG standard/suburban/express same in Pony, balanced against trams, RVs
                 # suburban has to be provided as the mail railcar expects it, just copying it in is easiest solution
                 "suburban": [45, 45, 60, 75],
