@@ -13,6 +13,7 @@ wagon_module_names = [
     "express_railcar_mail_trailer_cars",
     "express_railcar_passenger_trailer_cars",
     "passenger_cars",
+    "panoramic_cars",
     "high_speed_passenger_cars",
     "restaurant_cars",
     "suburban_passenger_cars",
@@ -62,6 +63,11 @@ wagon_module_names = [
     "randomised_dump_cars",
     "aggregate_dump_cars_type_1",
     "aggregate_dump_cars_type_2",
+    "aggregate_dump_cars_type_3",
+    "aggregate_dump_cars_type_4",
+    "aggregate_dump_cars_type_5",
+    "aggregate_dump_cars_type_6",
+    "randomised_aggregate_dump_cars",
     "ore_dump_cars",
     "scrap_metal_cars",
     "skip_cars",
@@ -188,13 +194,16 @@ role_group_mapping = OrderedDict(
         ),
         (
             "universal",
-            # order of mailrailcar and pax_railbus is significant as of April 2021, for unfortunate tech-tree ordering reasons
-            ["universal", "mail_railcar", "pax_railbus"],
+            ["universal"],
         ),
-        # railcars get their own special case due to high capacity, bit janky but eh
+        # railcars get their own special cases due to high capacity, bit janky but eh
         (
-            "suburban",
-            ["pax_railcar", "pax_suburban_coach"],
+            "suburban_or_universal_railcar",
+            ["pax_railbus", "pax_railcar", "pax_suburban_coach"],
+        ),
+        (
+            "mail_railcar",
+            ["mail_railcar"],
         ),
         ("express_railcar", ["express_pax_railcar", "express_mail_railcar"]),
         ("hst", ["hst"]),
@@ -219,7 +228,7 @@ role_group_mapping = OrderedDict(
                 "snoughplough!",
             ],
         ),
-        ("metro", ["pax_metro", "mail_metro"]),  # note pax before mail
+        ("metro", ["pax_metro", "mail_metro", "metro"]),  # note pax before mail
     ]
 )
 
@@ -228,13 +237,14 @@ role_string_mapping = {
     "driving_cab": "STR_ROLE_DRIVING_CAB",
     "express": "STR_ROLE_GENERAL_PURPOSE_EXPRESS",
     "express_railcar": "STR_ROLE_GENERAL_PURPOSE_EXPRESS",
-    "freight": "STR_ROLE_FREIGHT",
+    "freight": "STR_ROLE_GENERAL_PURPOSE_FREIGHT",
     "gronk!": "STR_ROLE_GRONK",
     "high_power_railcar": "STR_ROLE_GENERAL_PURPOSE_EXPRESS",
     "hst": "STR_ROLE_INTERCITY_EXPRESS",
     "lolz": "STR_ROLE_LOLZ",
+    "mail_railcar": "STR_ROLE_GENERAL_PURPOSE",
     "metro": "STR_ROLE_METRO",
-    "suburban": "STR_ROLE_SUBURBAN",
+    "suburban_or_universal_railcar": "STR_ROLE_SUBURBAN",
     "universal": "STR_ROLE_GENERAL_PURPOSE",
     "very_high_speed": "STR_ROLE_INTERCITY_EXPRESS",
 }
@@ -253,7 +263,8 @@ intro_month_offsets_by_role_group = {
     "hst": 3,
     "freight_core": 4,
     "freight_non_core": 5,
-    "suburban": 6,
+    "suburban_or_universal_railcar": 6,
+    "mail_railcar": 6,
     "metro": 7,
     "very_high_speed": 8,
     "food_wagons": 9,
@@ -278,6 +289,7 @@ buyable_variant_group_consist_base_ids_by_group_name = {
     "wagon_group_mgr_hopper_cars": "mgr_hopper_car",
     "wagon_group_intermodal_cars": "intermodal_car",
     "wagon_group_open_cars": "open_car",
+    "wagon_group_passenger_cars": "passenger_car",
     "wagon_group_pressure_tank_cars": "pressure_tank_car",
     "wagon_group_reefer_cars": "reefer_car_type_1",
     "wagon_group_silo_cars": "silo_car",
@@ -958,12 +970,6 @@ spritesheet_bounding_boxes_symmetric_unreversed = list(
 )
 spritesheet_bounding_boxes_symmetric_unreversed.extend(
     spritesheet_bounding_boxes_asymmetric_unreversed[4:8]
-)
-
-# spritesheet_bounding_boxes_symmetric_reversed is identical to symmetric unreversed
-# (reversing symmetrical vehicles is meaningless, but used for livery hax when some vehicles are flipped)
-spritesheet_bounding_boxes_symmetric_reversed = (
-    spritesheet_bounding_boxes_symmetric_unreversed
 )
 
 # rather than total spritesheet width, we often need to know the max x extent that actually contains sprites

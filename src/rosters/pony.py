@@ -48,7 +48,7 @@ engine_module_names = [
     "defiant",
     "relentless",
     "dynamo",
-    # "cyclone", # unfinished, nerfed
+    "cyclone",
     "shoebox",
     "ultra_shoebox",
     "hurly_burly",
@@ -75,7 +75,7 @@ engine_module_names = [
     # freight
     "hercules",
     "eastern",
-    # "celt", # unfinished, nerfed
+    "celt",
     "haar",
     "trojan",
     "growler",
@@ -110,9 +110,11 @@ engine_module_names = [
     # gronks / snowploughs
     "grub",
     "lamia",
+    "fireball",
     "gronk",
     "chuggypig",
-    "magnum_70",
+    "progress",
+    "magnum_90",
     "snowplough_pony_gen_2",
     # cargo sprinter
     "cargo_sprinter",
@@ -146,7 +148,7 @@ engine_module_names = [
     "high_flyer",
     "sunshine_coast",
     "olympic",
-    #"chronos",
+    "chronos",
     "nimbus",
     # brit high speed pax
     "firebird",
@@ -173,11 +175,23 @@ engine_module_names = [
     "driving_cab_high_speed_mail_pony_gen_6",
     # metro
     "serpentine",
+    "poplar",
     "westbourne",
+    "hammersmith",
     "fleet",
+    "canary",
     "longwater",
+    "ravensbourne",
     "tyburn",
+    "wandle",
     "tideway",
+    "bankside",
+    "debden",
+    "cringle",
+    "mulberry",
+    "walbrook",
+    "borax",
+    "angerstein",
     # ng engines
     "cheese_bug",
     "bean_feast",
@@ -187,16 +201,23 @@ engine_module_names = [
     "alfama",
     "gargouille",
     "solano",
+    "lebeche",
     "tyrconnell",
     "nile",
     "hinterland",
     "rockhampton",
+    "higuma",
     # ng railcars
     "mumble",
     "mumble_single",
-    # "snapper", # 3.6.0
-    # "snapper_single", # 3.6.0
+    "snapper",
+    "snapper_single",
     "zorro",
+    "ruby",
+    "golfinho",
+    "stratos",
+    "driving_cab_passenger_ng_pony_gen_4",
+    "driving_cab_panoramic_passenger_ng_pony_gen_4",
 ]
 
 # these can be alphabetised, the buy menu order is enforced in global constants
@@ -252,10 +273,10 @@ def main():
                     140,
                     140,
                 ],
-                "hst": [0, 0, 0, 112, 128, 128],  # CABBAGE
-                "hst_on_lgv": [0, 0, 0, 0, 140, 140],  # CABBAGE
-                "very_high_speed": [0, 0, 0, 0, 128, 128],  # CABBAGE
-                "very_high_speed_on_lgv": [0, 0, 0, 0, 155, 186],  # CABBAGE
+                "hst": [0, 0, 0, 112, 128, 128],
+                "hst_on_lgv": [0, 0, 0, 0, 140, 140],
+                "very_high_speed": [0, 0, 0, 0, 128, 128],
+                "very_high_speed_on_lgv": [0, 0, 0, 0, 155, 186],
             },
             "METRO": {
                 "standard": [45, 55, 65]
@@ -279,6 +300,7 @@ def main():
         freight_car_capacity_per_unit_length={
             "RAIL": [4, 4, 5, 5.5, 6, 6],
             "NG": [3, 3, 4, 4],
+            "METRO": [4, 5, 6],
         },
         pax_car_capacity_per_unit_length={
             "RAIL": [3, 3.75, 4.5, 5.25, 6, 6],
@@ -307,6 +329,14 @@ def main():
                 "multiplier": 2.5,
                 "loading_speed_multiplier": 1.75,
             },
+            "railbus_combine_ng_1": {
+                "multiplier": 2,
+                "loading_speed_multiplier": 1.5,
+            },
+            "railbus_combine_ng_2": {
+                "multiplier": 1.5,
+                "loading_speed_multiplier": 1.25,
+            },
         },
         # freight car weight factor varies slightly by gen, reflecting modern cars with lighter weight
         train_car_weight_factors=[0.5, 0.5, 0.5, 0.48, 0.44, 0.40],
@@ -314,6 +344,13 @@ def main():
         # generally, reuse of these is encouraged, they're (mostly) just metadata and can be repeated multiple times for different spriterows of a vehicle
         # keep alphabetised
         engine_and_pax_mail_car_liveries={
+            "ARC": {
+                "remap_to_cc": None,
+                "docs_image_input_cc": [
+                    ("COLOUR_GREY", "COLOUR_GREY"),
+                    ("COLOUR_RED", "COLOUR_WHITE"),
+                ],
+            },
             "BANGER_BLUE": {
                 "remap_to_cc": None,
                 "docs_image_input_cc": [
@@ -496,6 +533,22 @@ def main():
                     ("COLOUR_PALE_GREEN", "COLOUR_WHITE"),
                 ],
             },
+            "TGV_LA_POSTE": {
+                "remap_to_cc": None,
+                "docs_image_input_cc": [
+                    ("COLOUR_BLUE", "COLOUR_WHITE"),
+                    ("COLOUR_RED", "COLOUR_WHITE"),
+                    ("COLOUR_YELLOW", "COLOUR_BLUE"),
+                ],
+            },
+            "TUBE": {
+                "remap_to_cc": None,
+                "docs_image_input_cc": [
+                    ("COLOUR_BLUE", "COLOUR_BLUE"),
+                    ("COLOUR_RED", "COLOUR_WHITE"),
+                    ("COLOUR_RED", "COLOUR_DARK_BLUE"),
+                ],
+            },
             # the default "nothing" livery
             "VANILLA": {
                 "remap_to_cc": None,
@@ -522,14 +575,6 @@ def main():
                     ("COLOUR_PALE_GREEN", "COLOUR_WHITE"),
                 ],
             },
-            "TGV_LA_POSTE": {
-                "remap_to_cc": None,
-                "docs_image_input_cc": [
-                    ("COLOUR_BLUE", "COLOUR_WHITE"),
-                    ("COLOUR_RED", "COLOUR_WHITE"),
-                    ("COLOUR_YELLOW", "COLOUR_BLUE"),
-                ],
-            },
             "YEOMAN": {
                 "remap_to_cc": None,
                 "docs_image_input_cc": [
@@ -541,7 +586,7 @@ def main():
             },
         },
         # lists of 2-tuple (livery_name, relative_spriterow_num) for pax / mail vehicles
-        # buy menu order will match liast order
+        # buy menu order will match list order
         # - livery name comes from roster engine_and_pax_mail_car_liveries
         # - relative_spriterow_num allows reordering sprites relative to spritesheet
         pax_mail_livery_groups={
@@ -592,8 +637,14 @@ def main():
                 ("VANILLA", 2),
                 ("VANILLA", 3),
             ],
-            "default_metro_liveries": [
-                ("VANILLA", 0),
+            "metro_pax_liveries": [
+                ("TUBE", 0),
+                ("VANILLA", 1),
+            ],
+            "metro_mail_liveries": [
+                ("TUBE", 0),
+                ("VANILLA", 1),
+                ("ROYAL_MAIL", 2),
             ],
         },
         engine_module_names=engine_module_names,

@@ -2,8 +2,8 @@
 <tal:spritesets repeat="spriteset_data consist.gestalt_graphics.unique_spritesets">
     <!--! spriteset loops got too complex in the templates, with livery, empty state, cargo loading, cargo loaded, and random variants
           so I moved the logic for spritesets into the gestalt, and simply render out all from a list with a trivial loop -->
-    spriteset(${vehicle.id}_ss_${spriteset_data[0]}_${spriteset_data[1]}, "${graphics_path}${consist.id}.png") {
-        ${vehicle.get_spriteset_template_name('unreversed', spriteset_data[1], spriteset_data[2])}
+    spriteset(${vehicle.id}_ss_${spriteset_data[0]}, "${graphics_path}${consist.id}.png") {
+        ${vehicle.get_spriteset_template_name('unreversed', spriteset_data[1])}
     }
     <!--! spritegroups aren't used here, direct to spriteset -->
 </tal:spritesets>
@@ -11,15 +11,12 @@
 <tal:spritelayer_vehicle_layers repeat="vehicle_spritelayer_name consist.gestalt_graphics.vehicle_spritelayer_names">
     switch (FEAT_TRAINS, SELF, ${vehicle.id}_switch_graphics_${vehicle_spritelayer_name}_position_in_consist_entry_point,
         [
-            switch_graphics_automobile_transporter_ruleset_${consist.gestalt_graphics.consist_ruleset}()
-            + (10 * vehicle_is_flipped)
+            10 + switch_graphics_automobile_transporter_ruleset_${consist.gestalt_graphics.consist_ruleset}()
         ]
     ) {
-        <tal:flip_state repeat="flip_state ['unflipped', 'flipped']">
-            <tal:position_ruleset repeat="position_variant consist.gestalt_graphics.position_variants">
-                ${repeat.position_variant.index + (10 if flip_state == 'flipped' else 0)}: ${vehicle.id}_ss_${vehicle_spritelayer_name}_${position_variant}_${flip_state};
-            </tal:position_ruleset>
-        </tal:flip_state>
+        <tal:position_ruleset repeat="position_variant consist.gestalt_graphics.position_variants">
+            ${10 + repeat.position_variant.index}: ${vehicle.id}_ss_${vehicle_spritelayer_name}_${position_variant};
+        </tal:position_ruleset>
     }
 </tal:spritelayer_vehicle_layers>
 
@@ -60,15 +57,6 @@ switch (FEAT_TRAINS, SELF, ${vehicle.id}_switch_graphics_purchase, 0) {
 }
 
 <tal:include metal:use-macro="load: graphics_entry_switches.pynml" />
-
-<!--!
-    dedicated colour remapping for CC, with user flip support but, no randomisation
-    note that this will return incorrect results if used in purchase list, make sure it's not called by handling purchase_colour_mapping explicitly
--->
-switch (FEAT_TRAINS, SELF, ${vehicle.id}_switch_colour_mapping, vehicle_is_flipped) {
-    1: return base_sprite_2cc + 16 * company_colour1 + company_colour2; <!--! swap 1CC and 2CC -->
-    return base_sprite_2cc + 16 * company_colour2 + company_colour1; <!--! apply regular 1CC and 2CC -->
-}
 
 <tal:optional_capacity_switches condition="vehicle.has_cargo_capacity">
     <tal:include metal:use-macro="load: capacity.pynml" />

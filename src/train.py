@@ -289,17 +289,6 @@ class Consist(object):
         return result
 
     @property
-    def reversed_variants(self):
-        print("CABBAGE 99 reversed_variants deprecated")
-        # Handles 'unreversed' and optional 'reversed' variant, which if provided, will be chosen at random per consist
-        # NOT the same as 'flipped' which is a player choice in-game, and handled separately
-        # Previous model_variant approach for this was deprecated March 2018, needlessly complicated
-        result = ["unreversed"]
-        if self.random_reverse:
-            result.append("reversed")
-        return result
-
-    @property
     def str_name_suffix(self):
         if getattr(self, "_str_name_suffix", None) is not None:
             return self._str_name_suffix
@@ -371,7 +360,7 @@ class Consist(object):
                 # otherwise pass through as is
                 result.append(stack_item)
         return result
-        #return utils.convert_flat_list_to_pairs_of_tuples(result)
+        # return utils.convert_flat_list_to_pairs_of_tuples(result)
 
     def get_name_as_property(self, unit_variant):
         # text filter in buy menu needs name as prop as of June 2023
@@ -383,7 +372,12 @@ class Consist(object):
         return result
 
     def engine_varies_power_by_power_source(self, vehicle):
-        if self.power_by_power_source is not None and vehicle.is_lead_unit_of_consist:
+        # note that we use self.cab_id to eliminate trailer cars from this (which use power_by_power_source to manage pantographs), this is JFDI and may need refactored in future
+        if (
+            (self.power_by_power_source is not None)
+            and (vehicle.is_lead_unit_of_consist)
+            and (getattr(self, "cab_consist", None) is None)
+        ):
             if len(self.power_by_power_source) > 1:
                 # as of Dec 2018, can't use both variable power and wagon power
                 # that could be changed if https://github.com/OpenTTD/OpenTTD/pull/7000 is done
@@ -562,7 +556,10 @@ class Consist(object):
     def dedicated_trailer_consists(self):
         # fetch dedicated trailer consists for this cab engine (if any)
         result = []
-        for consists in [self.roster.engine_consists_excluding_clones, self.roster.wagon_consists]:
+        for consists in [
+            self.roster.engine_consists_excluding_clones,
+            self.roster.wagon_consists,
+        ]:
             for consist in consists:
                 if getattr(consist, "cab_id", None) == self.id:
                     result.append(consist)
@@ -1103,12 +1100,6 @@ class Consist(object):
         except:
             pass
 
-        # some wagons (mostly railcar trailers and pax coaches) might want to show an optional role string
-        if self._buy_menu_additional_text_role_string is not None:
-            result.append(
-                "STR_ROLE, string(" + self._buy_menu_additional_text_role_string + ")"
-            )
-
         # driving cab hint comes after role string
         if self.buy_menu_additional_text_hint_driving_cab:
             result.append("STR_BUY_MENU_ADDITIONAL_TEXT_HINT_DRIVING_CAB")
@@ -1163,6 +1154,10 @@ class Consist(object):
 
     @property
     def buy_menu_additional_text_role_string(self):
+        if self._buy_menu_additional_text_role_string is not None:
+            return (
+                "STR_ROLE, string(" + self._buy_menu_additional_text_role_string + ")"
+            )
         for role_group, roles in global_constants.role_group_mapping.items():
             if self.role in roles:
                 return (
@@ -1213,14 +1208,6 @@ class Consist(object):
                     "Transitional General Manager (Traction)",
                 ]
         return cite_name + ", " + random.choice(cite_titles)
-
-    def render_articulated_switch(self, templates):
-        template = templates["articulated_parts.pynml"]
-        nml_result = template(
-            consist=self,
-            global_constants=global_constants,
-        )
-        return nml_result
 
     def freeze_cross_roster_lookups(self):
         # graphics processing can't depend on roster object reliably, as it blows up multiprocessing (can't pickle roster), for reasons I never figured out
@@ -1290,8 +1277,6 @@ class Consist(object):
         self.assert_power()
         # templating
         nml_result = ""
-        if len(self.units) > 1:
-            nml_result = nml_result + self.render_articulated_switch(templates)
         for unit in self.unique_units:
             nml_result = nml_result + unit.render(templates, graphics_path)
         return nml_result
@@ -1489,6 +1474,38 @@ class AutoCoachCombineConsist(EngineConsist):
         return self.pax_car_capacity_type["loading_speed_multiplier"]
 
 
+class FixedFormationRailcarCombineConsist(EngineConsist):
+    """
+    Consist for a fixed formation articulated railcar combine (mail + pax).
+    This *does* not use consist-dependent position sprite rulesets; the formation is fixed.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.pax_car_capacity_type = self.roster.pax_car_capacity_types[
+            kwargs["pax_car_capacity_type"]
+        ]
+        if self.base_track_type_name == "NG":
+            # pony NG jank, to force a different role string for NG
+            if self.gen == 4:
+                self._buy_menu_additional_text_role_string = (
+                    "STR_ROLE_GENERAL_PURPOSE_EXPRESS"
+                )
+            else:
+                self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE"
+        # Graphics configuration
+        self.gestalt_graphics = GestaltGraphicsCustom(
+            "vehicle_fixed_formation_railcar.pynml",
+            liveries=self.roster.get_liveries_by_name(
+                []
+            ),  # inserts the default liveries for docs examples
+        )
+
+    @property
+    def loading_speed_multiplier(self):
+        return self.pax_car_capacity_type["loading_speed_multiplier"]  # !!!!!!!!!!!!!!!
+
+
 class MailEngineConsist(EngineConsist):
     """
     Consist of engines / units that has mail (and express freight) capacity
@@ -1590,7 +1607,7 @@ class MailEngineMetroConsist(MailEngineConsist):
         # * unit with driving cab front end
         # * unit with driving cab rear end
         spriterow_group_mappings = {"default": 0, "first": 0, "last": 1, "special": 0}
-        liveries = self.roster.get_pax_mail_liveries("default_metro_liveries", **kwargs)
+        liveries = self.roster.get_pax_mail_liveries("metro_mail_liveries", **kwargs)
         self.gestalt_graphics = GestaltGraphicsConsistPositionDependent(
             spriterow_group_mappings,
             consist_ruleset="metro",
@@ -1612,6 +1629,11 @@ class MailEngineRailcarConsist(MailEngineConsist):
         super().__init__(**kwargs)
         # train_flag_mu solely used for ottd livery (company colour) selection
         self.train_flag_mu = True
+        if self.base_track_type_name == "NG" and self.gen == 4:
+            # pony NG jank, mail railcar directly set role buy menu string here, (don't set a different role as that confuses the tech tree etc)
+            self._buy_menu_additional_text_role_string = (
+                "STR_ROLE_GENERAL_PURPOSE_EXPRESS"
+            )
         # non-standard cite
         if self.base_track_type_name == "NG":
             # give NG a bonus to align run cost with NG railbus
@@ -1645,7 +1667,9 @@ class MailEngineRailcarConsist(MailEngineConsist):
                 "last": 2,
                 "special": 0,
             }
-        if self.role_child_branch_num in [2]:
+        # this will be fragile, it's dedicated to pony roster, but eh
+        # for special cases, these vehicles could just use the livery keyword on init, but it would be over-ridden by this conditional block currently
+        if self.role_child_branch_num in [2] or self.base_track_type_name == "NG":
             liveries = self.roster.get_pax_mail_liveries(
                 "diesel_railcar_mail_liveries", **kwargs
             )
@@ -1694,17 +1718,19 @@ class MailEngineExpressRailcarConsist(MailEngineConsist):
         else:
             self.roof_type = "pax_mail_smooth"
         # position variants
+        # * unit with two cabs (will never be used if the specific consist is articulated)
         # * unit with driving cab front end
         # * unit with driving cab rear end
         # * unit with no cabs (center car)
-        # * special unit with no cabs (center car)
         spriterow_group_mappings = {"default": 0, "first": 1, "last": 2, "special": 3}
         liveries = self.roster.get_pax_mail_liveries("default_mail_liveries", **kwargs)
+        jfdi_pantograph_debug_image_y_offsets = [len(liveries) * 60, 30]
         self.gestalt_graphics = GestaltGraphicsConsistPositionDependent(
             spriterow_group_mappings,
             consist_ruleset="railcars_4_unit_sets",
             liveries=liveries,
             pantograph_type=self.pantograph_type,
+            jfdi_pantograph_debug_image_y_offsets=jfdi_pantograph_debug_image_y_offsets,
         )
 
     @property
@@ -1821,8 +1847,13 @@ class PassengerEngineExpressRailcarConsist(PassengerEngineConsist):
         # train_flag_mu solely used for ottd livery (company colour) selection
         self.train_flag_mu = True
         self.buy_cost_adjustment_factor = 0.85
-        # to avoid these railcars being super-bargain cheap, add a cost malus compared to standard railcars (still less than standard engines)
-        self.fixed_run_cost_points = 155
+        if self.base_track_type_name == "NG":
+            # special case to knock costs on NG versions of these down similar to other railcars
+            self.fixed_run_cost_points = 120
+            self.floating_run_cost_multiplier = 4 # cleanest way to compress run cost down sufficiently
+        else:
+            # to avoid these railcars being super-bargain cheap, add a cost malus compared to standard railcars (still less than standard engines)
+            self.fixed_run_cost_points = 155
         # non-standard cite
         self._cite = "Dr Constance Speed"
         # Graphics configuration
@@ -1831,18 +1862,15 @@ class PassengerEngineExpressRailcarConsist(PassengerEngineConsist):
         else:
             self.roof_type = "pax_mail_smooth"
         # position variants
-        # * unit with driving cab front end
-        # * unit with driving cab rear end
-        # * unit with no cabs (center car)
-        # * special unit with no cabs (center car)
-        # ruleset will combine these to make multiple-units 1, 2, or 3 vehicles long, then repeating the pattern
         spriterow_group_mappings = {"default": 0, "first": 1, "last": 2, "special": 3}
         liveries = self.roster.get_pax_mail_liveries("default_pax_liveries", **kwargs)
+        jfdi_pantograph_debug_image_y_offsets = [len(liveries) * 60, 30]
         self.gestalt_graphics = GestaltGraphicsConsistPositionDependent(
             spriterow_group_mappings,
             consist_ruleset=kwargs.get("consist_ruleset", "railcars_6_unit_sets"),
             liveries=liveries,
             pantograph_type=self.pantograph_type,
+            jfdi_pantograph_debug_image_y_offsets=jfdi_pantograph_debug_image_y_offsets,
         )
 
     @property
@@ -1892,7 +1920,7 @@ class PassengerEngineMetroConsist(PassengerEngineConsist):
         # * unit with driving cab front end
         # * unit with driving cab rear end
         spriterow_group_mappings = {"default": 0, "first": 0, "last": 1, "special": 0}
-        liveries = self.roster.get_pax_mail_liveries("default_metro_liveries", **kwargs)
+        liveries = self.roster.get_pax_mail_liveries("metro_pax_liveries", **kwargs)
         self.gestalt_graphics = GestaltGraphicsConsistPositionDependent(
             spriterow_group_mappings,
             consist_ruleset="metro",
@@ -1921,6 +1949,14 @@ class PassengerEngineRailbusConsist(PassengerEngineConsist):
             self.pax_car_capacity_type = self.roster.pax_car_capacity_types[
                 kwargs["pax_car_capacity_type"]
             ]
+        if self.base_track_type_name == "NG":
+            # pony NG jank, railbus trailers directly set role buy menu string here, (don't set a different role as that confuses the tech tree etc)
+            if self.gen == 4:
+                self._buy_menu_additional_text_role_string = (
+                    "STR_ROLE_GENERAL_PURPOSE_EXPRESS"
+                )
+            else:
+                self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE"
         # non-standard cite
         self._cite = "Arabella Unit"
         # Graphics configuration
@@ -2352,6 +2388,8 @@ class CarConsist(Consist):
         # 'normal' rail and 'elrail' doesn't require an id modifier
         if kwargs.get("base_track_type_name", None) == "NG":
             base_id = base_id + "_ng"
+        if kwargs.get("base_track_type_name", None) == "METRO":
+            base_id = base_id + "_metro"
         substrings.append(base_id)
         substrings.append(kwargs["roster_id"])
         substrings.append("gen")
@@ -3805,15 +3843,14 @@ class DumpCarAggregateConsistType1(DumpCarConsistBase):
         # any buyable variants (liveries) within the subclass will be automatically added to the group
         self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
         # don't include aggregate wagons in randomised lists, they don't look good
-        self.randomised_candidate_groups = []
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
         self._joker = True
         # Graphics configuration
+        # minimalist use of CC, so only one livery
         self.gestalt_graphics.liveries = [
-            global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_2"],
             global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
-            global_constants.freight_wagon_liveries[
-                "COMPLEMENT_COMPANY_COLOUR_USE_WEATHERING"
-            ],
         ]
 
 
@@ -3831,16 +3868,138 @@ class DumpCarAggregateConsistType2(DumpCarConsistBase):
         # any buyable variants (liveries) within the subclass will be automatically added to the group
         self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
         # don't include aggregate wagons in randomised lists, they don't look good
-        self.randomised_candidate_groups = []
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
         self._joker = True
         # Graphics configuration
+        # minimalist use of CC, so only one livery
         self.gestalt_graphics.liveries = [
-            global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_2"],
             global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
-            global_constants.freight_wagon_liveries[
-                "COMPLEMENT_COMPANY_COLOUR_USE_WEATHERING"
-            ],
         ]
+
+
+class DumpCarAggregateConsistType3(DumpCarConsistBase):
+    """
+    Aggregate Car.
+    Same as standard dump car, but different appearance and default cargos.
+    """
+
+    def __init__(self, **kwargs):
+        self.base_id = "aggregate_dump_car_type_3"
+        super().__init__(**kwargs)
+        self.default_cargos = polar_fox.constants.default_cargos["dump_aggregates"]
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
+        # don't include aggregate wagons in randomised lists, they don't look good
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
+        self._joker = True
+        # Graphics configuration
+        # minimalist use of CC, so only one livery
+        self.gestalt_graphics.liveries = [
+            global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
+        ]
+
+
+class DumpCarAggregateConsistType4(DumpCarConsistBase):
+    """
+    Aggregate Car.
+    Same as standard dump car, but different appearance and default cargos.
+    """
+
+    def __init__(self, **kwargs):
+        self.base_id = "aggregate_dump_car_type_4"
+        super().__init__(**kwargs)
+        self.default_cargos = polar_fox.constants.default_cargos["dump_aggregates"]
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
+        # don't include aggregate wagons in randomised lists, they don't look good
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
+        self._joker = True
+        # Graphics configuration
+        # minimalist use of CC, so only one livery
+        self.gestalt_graphics.liveries = [
+            global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
+        ]
+
+
+class DumpCarAggregateConsistType5(DumpCarConsistBase):
+    """
+    Aggregate Car.
+    Same as standard dump car, but different appearance and default cargos.
+    """
+
+    def __init__(self, **kwargs):
+        self.base_id = "aggregate_dump_car_type_5"
+        super().__init__(**kwargs)
+        self.default_cargos = polar_fox.constants.default_cargos["dump_aggregates"]
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
+        # don't include aggregate wagons in randomised lists, they don't look good
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
+        self._joker = True
+        # Graphics configuration
+        # minimalist use of CC, so only one livery
+        self.gestalt_graphics.liveries = [
+            global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
+        ]
+
+
+class DumpCarAggregateConsistType6(DumpCarConsistBase):
+    """
+    Aggregate Car.
+    Same as standard dump car, but different appearance and default cargos.
+    """
+
+    def __init__(self, **kwargs):
+        self.base_id = "aggregate_dump_car_type_6"
+        super().__init__(**kwargs)
+        self.default_cargos = polar_fox.constants.default_cargos["dump_aggregates"]
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
+        # don't include aggregate wagons in randomised lists, they don't look good
+        self.randomised_candidate_groups = [
+            "randomised_aggregate_dump_car",
+        ]
+        self._joker = True
+        # Graphics configuration
+        # minimalist use of CC, so only one livery
+        self.gestalt_graphics.liveries = [
+            global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
+        ]
+
+
+class DumpCarAggregateRandomisedConsist(RandomisedConsistMixin, DumpCarConsistBase):
+    """
+    Random choice of aggregate dump car sprite.
+    """
+
+    def __init__(self, **kwargs):
+        self.base_id = "randomised_aggregate_dump_car"
+        super().__init__(**kwargs)
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_aggregate_dump_cars"
+        # Graphics configuration
+        # minimalist use of CC, so only one livery
+        self.gestalt_graphics = GestaltGraphicsRandomisedWagon(
+            dice_colour=2,
+            liveries=[
+                global_constants.freight_wagon_liveries[
+                    "COMPANY_COLOUR_USE_WEATHERING"
+                ],
+            ],
+        )
 
 
 class DumpCarHeavyDutyConsist(DumpCarConsistBase):
@@ -4785,6 +4944,7 @@ class HopperCarAggregateConsistBase(HopperCarConsistBase):
     """
     Base class for hopper for rock cargos, same refits as standard hopper, just a visual variant.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.default_cargos = polar_fox.constants.default_cargos["dump_aggregates"]
@@ -4902,7 +5062,9 @@ class HopperCarAggregateConsistType3(HopperCarAggregateConsistBase):
         ]
 
 
-class HopperCarAggregateRandomisedConsist(RandomisedConsistMixin, HopperCarAggregateConsistBase):
+class HopperCarAggregateRandomisedConsist(
+    RandomisedConsistMixin, HopperCarAggregateConsistBase
+):
     """
     Random choice of aggregate hopper car sprite.
     """
@@ -4917,11 +5079,21 @@ class HopperCarAggregateRandomisedConsist(RandomisedConsistMixin, HopperCarAggre
         self.gestalt_graphics = GestaltGraphicsRandomisedWagon(
             dice_colour=1,
             liveries=[
-                global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_1"],
-                global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_2"],
-                global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_7"],
-                global_constants.freight_wagon_liveries["RANDOM_FROM_CONSIST_LIVERIES_3"],
-                global_constants.freight_wagon_liveries["COMPANY_COLOUR_USE_WEATHERING"],
+                global_constants.freight_wagon_liveries[
+                    "RANDOM_FROM_CONSIST_LIVERIES_1"
+                ],
+                global_constants.freight_wagon_liveries[
+                    "RANDOM_FROM_CONSIST_LIVERIES_2"
+                ],
+                global_constants.freight_wagon_liveries[
+                    "RANDOM_FROM_CONSIST_LIVERIES_7"
+                ],
+                global_constants.freight_wagon_liveries[
+                    "RANDOM_FROM_CONSIST_LIVERIES_3"
+                ],
+                global_constants.freight_wagon_liveries[
+                    "COMPANY_COLOUR_USE_WEATHERING"
+                ],
                 global_constants.freight_wagon_liveries[
                     "COMPLEMENT_COMPANY_COLOUR_USE_WEATHERING"
                 ],
@@ -5202,7 +5374,6 @@ class IntermodalCarConsistBase(CarConsist):
         )
         # intermodal containers can't use random colour swaps on the wagons...
         # ...because the random bits are re-randomised when new cargo loads, to get new random containers, which would also cause new random wagon colour
-        # player can still flip to the second livery
         self.use_colour_randomisation_strategies = False
         # Graphics configuration
         # various rulesets are supported, per consist, (or could be extended to checks per roster)
@@ -5448,6 +5619,7 @@ class MailRailcarTrailerCarConsistBase(MailCarConsistBase):
             key: 0 for key in self.cab_consist.power_by_power_source.keys()
         }
         self.pantograph_type = self.cab_consist.pantograph_type
+        self.suppress_pantograph_if_no_engine_attached = True
         # train_flag_mu solely used for ottd livery (company colour) selection
         self.train_flag_mu = True
         self._str_name_suffix = "STR_NAME_SUFFIX_TRAILER"
@@ -5896,6 +6068,42 @@ class PassengeRailcarTrailerCarConsistBase(PassengerCarConsistBase):
         return result
 
 
+class PanoramicCarConsist(PassengerCarConsistBase):
+    """
+    Panoramic car / observation car / dome car.
+    No special effects, just an explicitly buildable visual variant of standard passenger car.
+    """
+
+    # very specific flag used for variable run costs and cargo aging factor with restaurant cars
+    # !! this will need made more general if e.g. motorail or observation cars are added
+    # not sure why I did this as a class property, but eh
+    affected_by_restaurant_car_in_consist = True
+
+    def __init__(self, **kwargs):
+        self.base_id = "panoramic_car"
+        super().__init__(**kwargs)
+        """ # not working as expected, unwanted nesting of panoramic car, needs debugged
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_passenger_cars"
+        """
+        # buy costs and run costs are levelled for standard and lux pax cars, not an interesting factor for variation
+        self.buy_cost_adjustment_factor = 1.4
+        self.floating_run_cost_multiplier = 3.33
+        # I'd prefer @property, but it was TMWFTLB to replace instances of weight_factor with _weight_factor for the default value
+        self.weight_factor = 1 if self.base_track_type_name == "NG" else 2
+        # pony NG jank directly set role buy menu string here, JFDI to make it work, may not actually be needed
+        self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE_EXPRESS"
+        # Graphics configuration
+        spriterow_group_mappings = {"default": 0, "first": 1, "last": 2, "special": 0}
+        liveries = self.roster.get_pax_mail_liveries("default_pax_liveries", **kwargs)
+        self.gestalt_graphics = GestaltGraphicsConsistPositionDependent(
+            spriterow_group_mappings,
+            consist_ruleset="pax_cars",
+            liveries=liveries,
+        )
+
+
 class PassengerCarConsist(PassengerCarConsistBase):
     """
     Standard passenger car.
@@ -5911,13 +6119,18 @@ class PassengerCarConsist(PassengerCarConsistBase):
     def __init__(self, **kwargs):
         self.base_id = "passenger_car"
         super().__init__(**kwargs)
+        """ # not working as expected, unwanted nesting of panoramic car, needs debugged
+        # buyable variant groups are created post-hoc and can group across subclasses
+        # any buyable variants (liveries) within the subclass will be automatically added to the group
+        self.use_named_buyable_variant_group = "wagon_group_passenger_cars"
+        """
         # buy costs and run costs are levelled for standard and lux pax cars, not an interesting factor for variation
         self.buy_cost_adjustment_factor = 1.4
         self.floating_run_cost_multiplier = 3.33
         # I'd prefer @property, but it was TMWFTLB to replace instances of weight_factor with _weight_factor for the default value
         self.weight_factor = 1 if self.base_track_type_name == "NG" else 2
-        # directly set role buy menu string here, don't set a role as that confuses the tech tree etc
-        if self.base_track_type_name == "NG":
+        # pony NG jank directly set role buy menu string here, handles pony gen 4 NG speed bump
+        if self.base_track_type_name == "NG" and self.gen < 4:
             self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE"
         else:
             self._buy_menu_additional_text_role_string = (
@@ -6104,15 +6317,28 @@ class PassengerRailbusTrailerCarConsist(PassengeRailcarTrailerCarConsistBase):
     def __init__(self, **kwargs):
         self.base_id = "railbus_passenger_trailer_car"
         super().__init__(**kwargs)
-        # PassengerCarConsistBase sets 'express' speed, but railbus trailers should override this
-        self.speed_class = "standard"
+        if self.base_track_type_name == "NG" and self.gen == 4:
+            # pony NG jank, gen 4 railbus trailers get a speed bump to 'express'
+            self.speed_class = "express"
+        else:
+            # PassengerCarConsistBase sets 'express' speed, but railbus trailers should override this
+            self.speed_class = "standard"
         self.buy_cost_adjustment_factor = 2.1
         self.floating_run_cost_multiplier = 4.75
         self._intro_year_days_offset = (
-            global_constants.intro_month_offsets_by_role_group["suburban"]
+            global_constants.intro_month_offsets_by_role_group[
+                "suburban_or_universal_railcar"
+            ]
         )
         # directly set role buy menu string here, don't set a role as that confuses the tech tree etc
-        self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE"
+        if self.base_track_type_name == "NG":
+            # pony NG jank, railbus trailers directly set role buy menu string here, (don't set a different role as that confuses the tech tree etc)
+            if self.gen == 4:
+                self._buy_menu_additional_text_role_string = (
+                    "STR_ROLE_GENERAL_PURPOSE_EXPRESS"
+                )
+            else:
+                self._buy_menu_additional_text_role_string = "STR_ROLE_GENERAL_PURPOSE"
         # I'd prefer @property, but it was TMWFTLB to replace instances of weight_factor with _weight_factor for the default value
         self.weight_factor = 1 if self.base_track_type_name == "NG" else 2
         # Graphics configuration
@@ -6175,7 +6401,9 @@ class PassengerRailcarTrailerCarConsist(PassengeRailcarTrailerCarConsistBase):
         self.buy_cost_adjustment_factor = 2.1
         self.floating_run_cost_multiplier = 4.75
         self._intro_year_days_offset = (
-            global_constants.intro_month_offsets_by_role_group["suburban"]
+            global_constants.intro_month_offsets_by_role_group[
+                "suburban_or_universal_railcar"
+            ]
         )
         # directly set role buy menu string here, don't set a role as that confuses the tech tree etc
         self._buy_menu_additional_text_role_string = "STR_ROLE_SUBURBAN"
@@ -6426,6 +6654,7 @@ class ReeferCarConsistType2(ReeferCarConsistBase):
         # buyable variant groups are created post-hoc and can group across subclasses
         # any buyable variants (liveries) within the subclass will be automatically added to the group
         self.use_named_buyable_variant_group = "wagon_group_reefer_cars"
+        self._joker = True
 
 
 class SiloCarConsistBase(CarConsist):
@@ -7217,11 +7446,16 @@ class UnitVariant(object):
             return True
         return False
 
-    def get_buy_menu_format(self, vehicle):
+    def get_buy_menu_additional_text_format(self, vehicle):
         # keep the template logic simple, present strings for a switch/case tree
         # variable_power and wagons_add_power are mutually exclusive (asserted by engine_varies_power_by_power_source as of August 2019)
         if self.unit.consist.engine_varies_power_by_power_source(vehicle):
-            return "variable_power"
+            # !! this combinatorial handling of power, lgv capable etc is a bad sign - we have the wrong kind of tree, as it's switch/case, not composeable / recursive
+            # !!! we need a better tree, similar to get_name_parts
+            if self.unit.consist.lgv_capable:
+                return "variable_power_and_lgv_capable"
+            else:
+                return "variable_power"
         elif self.unit.consist.lgv_capable:
             # yeah, simplicity failed when lgv_capable was added, this simple tree needs rethought to allow better composition of arbitrary strings
             if self.unit.consist.buy_menu_additional_text_hint_wagons_add_power:
@@ -7420,6 +7654,8 @@ class Train(object):
         self.default_effect_z_offset = (
             12  # optimised for Pony diesel and electric trains
         )
+        # optional - we might want to force the sprites to reverse in some contexts, for example rear cabs of multiple-unit articulated railcars
+        self.reverse_sprite_template = kwargs.get("reverse_sprite_template", False)
         # optional - only set if the graphics processor generates the vehicle chassis
         self.chassis = kwargs.get("chassis", None)
         # optional - occasionally we need to suppress composited roof sprites and just draw our own
@@ -7610,8 +7846,6 @@ class Train(object):
         ):
             if self.consist.gestalt_graphics.colour_mapping_with_purchase:
                 return "colour_mapping_switch_with_purchase"
-            else:
-                return "colour_mapping_switch_without_purchase"
         else:
             return None
 
@@ -7677,7 +7911,7 @@ class Train(object):
         )
         return expression_template.substitute(unit_offset=unit_offset)
 
-    def get_spriteset_template_name(self, reversed, flipped, y):
+    def get_spriteset_template_name(self, reversed, y):
         template_name = "_".join(
             [
                 "spriteset_template",
@@ -7685,24 +7919,6 @@ class Train(object):
                 reversed,
                 str(self.vehicle_length),
                 "8",
-                flipped,
-            ]
-        )
-        anim_flag = (
-            "ANIM" if self.consist.suppress_animated_pixel_warnings else "NOANIM"
-        )
-        args = ",".join([str(y), anim_flag])
-        return template_name + "(" + args + ")"
-
-    def get_spriteset_template_name_2(self, reversed, y):
-        template_name = "_".join(
-            [
-                "spriteset_template",
-                self.symmetry_type,
-                reversed,
-                str(self.vehicle_length),
-                "8",
-                "unflipped",
             ]
         )
         anim_flag = (
@@ -7885,7 +8101,9 @@ class DieselRailcarCombineUnitMail(CombineUnitMailBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.engine_class = "ENGINE_CLASS_DIESEL"
-        self.effects = {}
+        self.effects = {
+            "default": ["EFFECT_SPAWN_MODEL_DIESEL", "EFFECT_SPRITE_DIESEL"]
+        }
         self._symmetry_type = "asymmetric"
 
 
@@ -7897,7 +8115,9 @@ class DieselRailcarCombineUnitPax(CombineUnitPaxBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.engine_class = "ENGINE_CLASS_DIESEL"
-        self.effects = {}
+        self.effects = {
+            "default": ["EFFECT_SPAWN_MODEL_DIESEL", "EFFECT_SPRITE_DIESEL"]
+        }
         self._symmetry_type = "asymmetric"
 
 
@@ -7926,6 +8146,22 @@ class DieselRailcarBaseUnit(DieselEngineUnit):
         # the cab magic won't work unless it's asymmetric eh? :)
         self._symmetry_type = kwargs.get("symmetry_type", "asymmetric")
         # note that railcar effects are left in default position, no attempt to move them to end of vehicle, or double them (tried, looks weird)
+
+
+class DieselExpressRailcarPaxUnit(DieselRailcarBaseUnit):
+    """
+    Unit for a pax diesel express railcar.  Just a sparse subclass to set capacity and effects.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # magic to set capacity subject to length and vehicle capacity type
+        self.capacity = self.get_pax_car_capacity()
+        # effects
+        self.engine_class = "ENGINE_CLASS_DIESEL"
+        self.effects = {
+            "default": ["EFFECT_SPAWN_MODEL_DIESEL", "EFFECT_SPRITE_DIESEL"],
+        }
 
 
 class DieselRailcarMailUnit(DieselRailcarBaseUnit):
@@ -7963,9 +8199,11 @@ class ElectricEngineUnit(Train):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.engine_class = "ENGINE_CLASS_ELECTRIC"
-        self.effects = {
-            "default": ["EFFECT_SPAWN_MODEL_ELECTRIC", "EFFECT_SPRITE_ELECTRIC"]
-        }
+        # use kwargs so we can suppress effects by settting to empty dict
+        self.effects = kwargs.get(
+            "effects",
+            {"default": ["EFFECT_SPAWN_MODEL_ELECTRIC", "EFFECT_SPRITE_ELECTRIC"]},
+        )
         # almost all electric engines are asymmetric, override per vehicle as needed
         self._symmetry_type = kwargs.get("symmetry_type", "asymmetric")
 
@@ -7978,9 +8216,11 @@ class ElectricHighSpeedUnitBase(Train):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.engine_class = "ENGINE_CLASS_ELECTRIC"
-        self.effects = {
-            "default": ["EFFECT_SPAWN_MODEL_ELECTRIC", "EFFECT_SPRITE_ELECTRIC"]
-        }
+        # use kwargs so we can suppress effects by settting to empty dict
+        self.effects = kwargs.get(
+            "effects",
+            {"default": ["EFFECT_SPAWN_MODEL_ELECTRIC", "EFFECT_SPRITE_ELECTRIC"]},
+        )
         self._symmetry_type = "asymmetric"
 
 
@@ -8066,13 +8306,19 @@ class ElectroDieselRailcarMailUnit(ElectroDieselRailcarBaseUnit):
 
 class ElectroDieselExpressRailcarPaxUnit(ElectroDieselRailcarBaseUnit):
     """
-    Unit for a pax electro-diesel express railcar.  Just a sparse subclass to set capacity.
+    Unit for a pax electro-diesel express railcar.  Just a sparse subclass to set and effects.
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # magic to set capacity subject to length and vehicle capacity type
         self.capacity = self.get_pax_car_capacity()
+        # effects
+        self.engine_class = "ENGINE_CLASS_DIESEL"
+        self.effects = {
+            "default": ["EFFECT_SPAWN_MODEL_DIESEL", "EFFECT_SPRITE_DIESEL"],
+            "electrified": ["EFFECT_SPAWN_MODEL_ELECTRIC", "EFFECT_SPRITE_ELECTRIC"],
+        }
 
 
 class ElectricRailcarBaseUnit(Train):
@@ -8249,7 +8495,7 @@ class CabooseCar(TrainCar):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # caboose cars may be asymmetric, they are also user-flippable as of August 2022 (flip also toggles CC)
+        # caboose cars may be asymmetric, they are also user-flippable as of August 2022
         self._symmetry_type = "asymmetric"
 
     @property
@@ -8341,13 +8587,14 @@ class ExpressMailCar(ExpressCar):
 
 class MailRailcarTrailerCar(ExpressCar):
     """
-    Railcar (or railbus) unpowered mail trailer. This subclass only exists to set tail light
+    Railcar (or railbus) unpowered mail trailer. This subclass only exists to set tail light and symmetry type.
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # TrainCar sets auto tail light, override it
         self.tail_light = kwargs["tail_light"]  # fail if not passed, required arg
+        self._symmetry_type = "asymmetric"
 
 
 class AutomobileCarAsymmetric(ExpressCar):

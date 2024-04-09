@@ -16,7 +16,6 @@ def main(roster_id, **kwargs):
         # introduce early by design
         intro_year_offset=-4,
         buyable_variant_group_id="skipper",  # for pony, specifically force variant group (parent) to equivalent twin-unit railbus id
-        pax_car_capacity_type="high_capacity",  # specific to standard gauge pony railbuses
         sprites_complete=True,
     )
 
@@ -24,7 +23,7 @@ def main(roster_id, **kwargs):
         type=DieselRailcarPaxUnit,
         weight=24,
         chassis="railbus_lwb_24px",
-        tail_light="railcar_24px_2",
+        tail_light="railcar_24px_1",
     )
 
     consist.description = """Patience is the virtue of the donkeys."""

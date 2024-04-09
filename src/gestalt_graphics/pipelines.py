@@ -42,13 +42,17 @@ class Pipeline(object):
 
         # optional support for delegating to a spritesheet belonging to a different vehicle type (e.g. when recolouring same base pixels for different wagon types)
         if source_consist.gestalt_graphics.input_spritesheet_delegate_id is not None:
-            consist_filename_stem = self.consist.gestalt_graphics.input_spritesheet_delegate_id
+            consist_filename_stem = (
+                self.consist.gestalt_graphics.input_spritesheet_delegate_id
+            )
         else:
             consist_filename_stem = source_consist.id
 
         # the consist id might have the consist's roster_id baked into it, if so replace it with the roster_id of the module providing the graphics file
         # this will have a null effect (which is fine) if the roster_id consist is the same as the module providing the graphics gile
-        consist_filename_stem = consist_filename_stem.replace(source_consist.roster_id, source_consist.roster_id_providing_module)
+        consist_filename_stem = consist_filename_stem.replace(
+            source_consist.roster_id, source_consist.roster_id_providing_module
+        )
 
         return os.path.join(
             currentdir,
@@ -471,7 +475,9 @@ class GenerateBuyMenuSpriteVanillaPipelineBase(Pipeline):
                 input_row_num,
             ) in row_data["source_vehicles_and_input_spriterow_nums"]:
                 # the generated sprite for dual_headed case is intended for docs use only (OpenTTD already assembles the buy menu sprite in that case)
-                for input_sprite_x_offset in [224, 104] if self.consist.dual_headed else [224]:
+                for input_sprite_x_offset in (
+                    [224, 104] if self.consist.dual_headed else [224]
+                ):
                     # currently no cap on purchase menu sprite width
                     # consist has a buy_menu_width prop which caps to 64 which could be used (+1px overlap), but eh
                     unit_length_in_pixels = 4 * source_vehicle_unit.vehicle_length
@@ -499,7 +505,9 @@ class GenerateBuyMenuSpriteVanillaPipelineBase(Pipeline):
                         + row_data["spriterow_num_dest"]
                         * graphics_constants.spriterow_height,
                     )
-                    custom_buy_menu_sprite = spritesheet.sprites.copy().crop(crop_box_input)
+                    custom_buy_menu_sprite = spritesheet.sprites.copy().crop(
+                        crop_box_input
+                    )
                     spritesheet.sprites.paste(custom_buy_menu_sprite, crop_box_dest)
                     # increment x offset for pasting in next vehicle
                     x_offset += unit_length_in_pixels
@@ -748,9 +756,9 @@ class GenerateBuyMenuSpriteFromRandomisationCandidatesPipeline(Pipeline):
                 fade_image = ImageOps.mirror(fade_image)
                 fade_image_mask = ImageOps.mirror(fade_image_mask)
 
-        #if self.consist.id == "randomised_box_car_pony_gen_5B":
-            # spritesheet.sprites.show()
-            #pass
+        # if self.consist.id == "randomised_box_car_pony_gen_5B":
+        # spritesheet.sprites.show()
+        # pass
 
         return spritesheet
 
@@ -782,10 +790,6 @@ class GeneratePantographsSpritesheetPipeline(Pipeline):
         super().__init__()
 
     def add_pantograph_spriterows(self):
-        # !! this will eventually need extending for articulated vehicles
-        # !! that can be done by weaving in a repeat over units, to draw multiple pantograph blocks, using the same pattern as the vehicle Spritesheet
-        # !! the spriteset templates should then match the main vehicle, just changing path
-
         pantograph_input_images = {
             "diamond-single": "diamond.png",
             "diamond-double": "diamond.png",
@@ -795,6 +799,7 @@ class GeneratePantographsSpritesheetPipeline(Pipeline):
             "z-shaped-single-minimal": "z-shaped-minimal.png",
             "z-shaped-single-reversed": "z-shaped-reversed.png",
             "z-shaped-single-with-base": "z-shaped-with-base.png",
+            "z-shaped-double-with-base": "z-shaped-with-base.png",
         }
         pantograph_input_path = os.path.join(
             currentdir,
@@ -835,6 +840,10 @@ class GeneratePantographsSpritesheetPipeline(Pipeline):
             },
             "z-shaped-single-with-base": {"down": ["a"], "up": ["A"]},
             "z-shaped-single-minimal": {"down": ["a"], "up": ["A"]},
+            "z-shaped-double-with-base": {
+                "down": ["a", "b"],
+                "up": ["A", "b"],
+            },
         }
         pantograph_state_sprite_map = {
             "a": [
@@ -972,15 +981,21 @@ class GeneratePantographsSpritesheetPipeline(Pipeline):
 
         # add debug sprites with vehicle-pantograph comp for ease of checking
         # this very much assumes that the vehicle image has been generated, which holds currently due to the order pipelines are run in (and are in series)
+        # !! this doesn't handle the case of articulated consists, especially where the first consist row doesn't have pans
         vehicle_debug_image = Image.open(
             os.path.join(self.graphics_output_path, self.consist.id + ".png")
         )
         vehicle_debug_image = vehicle_debug_image.copy().crop(
             (
                 0,
-                10,
+                10
+                + self.consist.gestalt_graphics.jfdi_pantograph_debug_image_y_offsets[
+                    0
+                ],
                 graphics_constants.spritesheet_width,
-                10 + graphics_constants.spriterow_height,
+                10
+                + self.consist.gestalt_graphics.jfdi_pantograph_debug_image_y_offsets[0]
+                + graphics_constants.spriterow_height,
             )
         )
         pantograph_output_image.paste(
@@ -997,9 +1012,14 @@ class GeneratePantographsSpritesheetPipeline(Pipeline):
         pantograph_debug_image = pantograph_output_image.copy().crop(
             (
                 0,
-                10,
+                10
+                + self.consist.gestalt_graphics.jfdi_pantograph_debug_image_y_offsets[
+                    1
+                ],
                 graphics_constants.spritesheet_width,
-                10 + graphics_constants.spriterow_height,
+                10
+                + self.consist.gestalt_graphics.jfdi_pantograph_debug_image_y_offsets[1]
+                + graphics_constants.spriterow_height,
             )
         )
         pantograph_debug_mask = pantograph_debug_image.copy()

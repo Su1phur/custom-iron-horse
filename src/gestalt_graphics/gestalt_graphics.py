@@ -6,6 +6,7 @@ import utils
 # get args passed by makefile
 command_line_args = utils.get_command_line_args()
 
+
 class GestaltGraphics(object):
     """
     Simple class, which is extended in subclasses to configure:
@@ -30,7 +31,13 @@ class GestaltGraphics(object):
         # ruleset may also be used for buy menu sprite processing
         self.consist_ruleset = kwargs.get("consist_ruleset", None)
         # optional - (not common) we can delegate to another spritesheet if we're doing e.g. different consist types, but recolouring the same base sprites
-        self.input_spritesheet_delegate_id = kwargs.get("input_spritesheet_delegate_id", None)
+        self.input_spritesheet_delegate_id = kwargs.get(
+            "input_spritesheet_delegate_id", None
+        )
+        # !! we need a way to get a useful (if not perfect) debug vehicle image for checking pantograph positions, and this lets us force useful rows for vehicle and pan
+        self.jfdi_pantograph_debug_image_y_offsets = kwargs.get(
+            "jfdi_pantograph_debug_image_y_offsets", [0, 0]
+        )
 
     @property
     def nml_template(self):
@@ -71,9 +78,7 @@ class GestaltGraphics(object):
             dest_spriterows = pipeline.consist.buyable_variants[0:1]
         else:
             dest_spriterows = pipeline.consist.buyable_variants
-        for dest_spriterow_counter, buyable_variant in enumerate(
-            dest_spriterows
-        ):
+        for dest_spriterow_counter, buyable_variant in enumerate(dest_spriterows):
             source_vehicles_and_input_spriterow_nums = []
 
             for unit_counter, unit in enumerate(pipeline.consist.units):
@@ -510,9 +515,9 @@ class GestaltGraphicsCaboose(GestaltGraphics):
                 ),
             ]
 
-            row_config[
-                "source_vehicles_and_input_spriterow_nums"
-            ] = source_vehicles_and_input_spriterow_nums
+            row_config["source_vehicles_and_input_spriterow_nums"] = (
+                source_vehicles_and_input_spriterow_nums
+            )
             result.append(row_config)
         return result
 
@@ -752,20 +757,18 @@ class GestaltGraphicsAutomobilesTransporter(GestaltGraphics):
         row_height = graphics_constants.spriterow_height
 
         result = []
-        for flipped in ["unflipped", "flipped"]:
-            start_y_cumulative = graphics_constants.spritesheet_top_margin
+        start_y_cumulative = graphics_constants.spritesheet_top_margin
 
-            # add rows for empty sprite
-            for variant in self.position_variants:
-                for vehicle_spritelayer_name in self.vehicle_spritelayer_names:
-                    result.append(
-                        [
-                            vehicle_spritelayer_name + "_" + variant,
-                            flipped,
-                            start_y_cumulative,
-                        ]
-                    )
-                    start_y_cumulative += row_height
+        # add rows for empty sprite
+        for variant in self.position_variants:
+            for vehicle_spritelayer_name in self.vehicle_spritelayer_names:
+                result.append(
+                    [
+                        vehicle_spritelayer_name + "_" + variant,
+                        start_y_cumulative,
+                    ]
+                )
+                start_y_cumulative += row_height
         return result
 
     """
@@ -935,8 +938,9 @@ class GestaltGraphicsConsistPositionDependent(GestaltGraphics):
             )
             # this assumes no gaps in the spriterows, so take the max spriterow num
             # note the +1 because livery rows are zero indexed
-            # !!! pans are now generated to be livery independent, not sure this should be needed?
-            print("CABBAGE 86663 - num_pantograph_rows shouldn't need to check liveries")
+            # note that we simply generate a row per vehicle position variant
+            # this method leads to unnecessary rows for many cases
+            # but is relied on for multiple unit (railcars etc) where not all vehicles have pans, in which case the row is simply empty
             self.num_pantograph_rows = len(self.liveries) * (
                 1 + max(self.spriterow_group_mappings.values())
             )
@@ -1008,18 +1012,31 @@ class GestaltGraphicsConsistPositionDependent(GestaltGraphics):
         # that means we can just do first / last, and not worry about other position variants
         # support for arbitrary number of units could be added, derived from consist ruleset, but those cases don't exist as of Jan 2024
         if len(pipeline.consist.units) != 2:
-            raise BaseException(
-                "GestaltGraphicsConsistPositionDependent.get_buy_menu_unit_input_row_num(): consist "
-                + pipeline.consist.id
-                + " does not have exactly 2 units - this case is not currently supported"
-            )
+            if pipeline.consist.id == "golfinho":
+                #JFDI jank
+                if unit_counter == 1:
+                    position_variant_offset = self.spriterow_group_mappings["special"]
+                    unit_variant_row_num = (
+                        self.num_spritesheet_liveries_per_position_variant
+                        * position_variant_offset
+                        * self.num_load_state_or_similar_spriterows
+                    ) + (
+                        buyable_variant.relative_spriterow_num
+                        * self.num_load_state_or_similar_spriterows
+                    )
+                    return unit_variant_row_num
+            else:
+                raise BaseException(
+                    "GestaltGraphicsConsistPositionDependent.get_buy_menu_unit_input_row_num(): consist "
+                    + pipeline.consist.id
+                    + " does not have exactly 2 units - this case is not currently supported"
+                )
 
         if unit_counter == 0:
             position_variant_offset = self.spriterow_group_mappings["first"]
         else:
             position_variant_offset = self.spriterow_group_mappings["last"]
         if pipeline.is_pantographs_pipeline:
-            # !!! CABBAGE 240009 - this may not be working for all cases? e.g. express railcars, it doesn't account for pan positions reliably
             unit_variant_row_num = position_variant_offset
         else:
             unit_variant_row_num = (
@@ -1030,6 +1047,7 @@ class GestaltGraphicsConsistPositionDependent(GestaltGraphics):
                 buyable_variant.relative_spriterow_num
                 * self.num_load_state_or_similar_spriterows
             )
+
         return unit_variant_row_num
 
 

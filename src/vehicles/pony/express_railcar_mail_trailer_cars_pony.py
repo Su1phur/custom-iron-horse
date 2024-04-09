@@ -3,15 +3,15 @@ from train import MailExpressRailcarTrailerCarConsist, MailRailcarTrailerCar
 
 def main(roster_id, **kwargs):
     # --------------- standard gauge ---------------------------------------------------------------
-    """
+
     consist = MailExpressRailcarTrailerCarConsist(
         roster_id=roster_id,
-        roster_id_providing_module = kwargs["roster_id_providing_module"],
+        roster_id_providing_module=kwargs["roster_id_providing_module"],
         base_numeric_id=6350,
         gen=5,
         subtype="U",
         cab_id="chronos",
-        sprites_complete=False,
+        sprites_complete=True,
     )
 
     consist.add_unit(
@@ -20,4 +20,3 @@ def main(roster_id, **kwargs):
         tail_light="railcar_32px_3",
         repeat=2,
     )
-    """

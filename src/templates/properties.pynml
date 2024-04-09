@@ -24,6 +24,10 @@
     <tal:include metal:use-macro="load: cost.pynml" />
 </tal:running_cost_factor>
 
+<tal:articulated_parts condition="vehicle.is_lead_unit_of_consist and len(consist.units) > 1">
+    <tal:include metal:use-macro="load: articulated_parts.pynml" />
+</tal:articulated_parts>
+
 <tal:unit_variants repeat="unit_variant vehicle.unit_variants">
 
     <tal:name condition="vehicle.is_lead_unit_of_consist">
@@ -130,11 +134,6 @@
                     colour_mapping:                 switch_colour_mapping(${unit_variant.get_wagon_recolour_strategy_params()});
                     purchase_colour_mapping:        switch_colour_mapping(${unit_variant.get_wagon_recolour_strategy_params(context="purchase")});
                 </tal:use_colour_randomisation_strategies>
-                <tal:colour_mapping_switch_without_purchase case="'colour_mapping_switch_without_purchase'">
-                    colour_mapping:                 ${vehicle.id + consist.gestalt_graphics.colour_mapping_switch};
-                    <!--! in the case of flippable vehicles, don't check colour mapping in purchase list as vehicle_is_flipped is invalid for purchase list and will return 1 as undefined behaviour -->
-                    purchase_colour_mapping:        return base_sprite_2cc + 16 * company_colour2 + company_colour1;
-                </tal:colour_mapping_switch_without_purchase>
                 <tal:colour_mapping_switch_with_purchase case="'colour_mapping_switch_with_purchase'">
                     colour_mapping:                 ${vehicle.id + consist.gestalt_graphics.colour_mapping_switch};
                     purchase_colour_mapping:        ${vehicle.id + consist.gestalt_graphics.colour_mapping_switch_purchase};
@@ -187,7 +186,7 @@
                 item(FEAT_TRAINS, ${unit_variant.id}, ${unit_variant.numeric_id}) {
                     property {
                         climates_available:             NO_CLIMATE;
-                        variant_group:                  ${unit_variant.id};
+                        variant_group:                  0xFFFF; <!--! equivalent of INVALID_ENGINE - no variant group -->
                     }
                 }
             }

@@ -12,6 +12,7 @@ import utils
 # get args passed by makefile
 command_line_args = utils.get_command_line_args()
 
+
 class Roster(object):
     """
     Rosters compose a set of vehicles which is complete for gameplay.
@@ -26,7 +27,9 @@ class Roster(object):
         self.str_grf_name = kwargs.get("str_grf_name")
         # engine_module_names only used once at __init__ time, it's a list of module names, not the actual consists
         self.engine_module_names = kwargs.get("engine_module_names")
-        self.wagon_modules_provided_by_other_rosters = kwargs.get("wagon_modules_provided_by_other_rosters")
+        self.wagon_modules_provided_by_other_rosters = kwargs.get(
+            "wagon_modules_provided_by_other_rosters"
+        )
         self.engine_consists = []
         self.wagon_consists = []
         # create a structure to hold (buyable) variant groups
@@ -73,7 +76,7 @@ class Roster(object):
     def consists_in_buy_menu_order(self):
         result = []
         result.extend(self.engine_consists)
-        for base_track_type_name in ["RAIL", "NG"]:
+        for base_track_type_name in ["RAIL", "NG", "METRO"]:
             for base_id in self.wagon_consists_by_base_id.keys():
                 wagon_consists = [
                     wagon_consist
@@ -275,11 +278,11 @@ class Roster(object):
         result = []
         # we can optionally specify liveries per consist by passing the liveries keyword when defining the vehicle, otherwise use the default for this consist subclass
         livery_group_name = kwargs.get("liveries", default_livery_group_name)
-        # !! CABBAGE - the get() is used to support unfinished rosters which otherwise fail on missing pax_mail_livery_groups keyword
-        for livery in self.pax_mail_livery_groups.get(livery_group_name, []):
-            livery_CABBAGE = self.engine_and_pax_mail_car_liveries[livery[0]].copy()
-            livery_CABBAGE["relative_spriterow_num"] = livery[1]
-            result.append(livery_CABBAGE)
+        # will fail if the livery group is not defined in the roster
+        for livery in self.pax_mail_livery_groups[livery_group_name]:
+            livery_result = self.engine_and_pax_mail_car_liveries[livery[0]].copy()
+            livery_result["relative_spriterow_num"] = livery[1]
+            result.append(livery_result)
         return result
 
     def intro_year_ranges(self, base_track_type_name):
@@ -315,7 +318,7 @@ class Roster(object):
                         + consist.id
                         + " with base_numeric_id "
                         + str(consist.base_numeric_id)
-                        + " needs a base_numeric_id larger than 8200 as the range below 8200 is reserved for articulated vehicles (Iron Horse restriction for legacy reasons - OpenTTD limit is 16383 for articulated vehicle IDs, but some docs were outdated)"
+                        + " needs a base_numeric_id larger than 16383 as the range below 16383 is reserved for articulated vehicles"
                     )
                     # utils.echo_message(consist.id + " with base_numeric_id " + str(consist.base_numeric_id) + " needs a base_numeric_id larger than 8200 as the range below 8200 is reserved for articulated vehicles")
                     # utils.echo_message(str(consist.base_numeric_id))
@@ -329,16 +332,21 @@ class Roster(object):
                             + str(numeric_id)
                             + " which is part of an articulated vehicle, and needs a numeric_id smaller than "
                             + str(global_constants.max_articulated_id)
-                            + " - use a lower consist base_numeric_id (Iron Horse restriction for legacy reasons - OpenTTD limit is 16383 for articulated vehicle IDs, but some docs were outdated)"
+                            + " - use a lower consist base_numeric_id"
                         )
             for numeric_id in consist.unique_numeric_ids:
                 if numeric_id in numeric_id_defender:
                     colliding_consist = numeric_id_defender[numeric_id]
                     # there is a specific case of reused vehicles that are allowed to overlap IDs (they will be grf-independent, and the compile doesn't actually care)
-                    # it should be enough to just check the base_id, as both consists should then have been instantiated from the same source module
+                    # if base_id matches both consists have been instantiated from the same source module...
                     if hasattr(consist, "base_id"):
-                        if getattr(colliding_consist, "base_id", None) == consist.base_id:
-                            continue
+                        if (
+                            getattr(colliding_consist, "base_id", None)
+                            == consist.base_id
+                        ):
+                            # it's fine if both consists are then in different rosters, as they will not conflict
+                            if colliding_consist.roster.id != consist.roster.id:
+                                continue
                     raise BaseException(
                         "Error: consist "
                         + consist.id
@@ -373,13 +381,18 @@ class Roster(object):
         # wagons reused from other rosters - there is no per-wagon selection, it's all-or-nothing for all the wagons in the module
         # this is not intended to be a common case, it's for things like torpedo cars where redrawing and redefining them for all rosters is pointless
         # this may cause compile failures when refactoring stuff due to cross-roster dependencies being broken, if so comment the calls out
-        for roster_id_providing_modules, wagon_module_names in self.wagon_modules_provided_by_other_rosters.items():
+        for (
+            roster_id_providing_modules,
+            wagon_module_names,
+        ) in self.wagon_modules_provided_by_other_rosters.items():
             # apply buy menu order to wagon_modules_provided_by_other_rosters (rather than having to manually keep the lists in sync)
             wagon_module_names_in_buy_menu_order = []
             for wagon_module_name in global_constants.wagon_module_names:
                 if wagon_module_name in wagon_module_names:
                     wagon_module_names_in_buy_menu_order.append(wagon_module_name)
-            self.init_wagon_modules(roster_id_providing_modules, wagon_module_names_in_buy_menu_order)
+            self.init_wagon_modules(
+                roster_id_providing_modules, wagon_module_names_in_buy_menu_order
+            )
 
     def init_wagon_modules(self, roster_id_of_module, wagon_module_names):
         package_name = "vehicles." + roster_id_of_module
@@ -389,11 +402,15 @@ class Roster(object):
                 wagon_module = importlib.import_module(
                     "." + wagon_module_name, package_name
                 )
-                wagon_module.main(self.id, roster_id_providing_module=roster_id_of_module)
+                wagon_module.main(
+                    self.id, roster_id_providing_module=roster_id_of_module
+                )
             except ModuleNotFoundError:
                 # the module might be provided from another roster, which is fine
                 module_provided_by_another_roster = False
-                for wagon_module_names_from_another_roster in self.wagon_modules_provided_by_other_rosters.values():
+                for (
+                    wagon_module_names_from_another_roster
+                ) in self.wagon_modules_provided_by_other_rosters.values():
                     if wagon_module_name_stem in wagon_module_names_from_another_roster:
                         module_provided_by_another_roster = True
                         break

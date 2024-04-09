@@ -9,7 +9,6 @@ def main(roster_id, **kwargs):
         name="0-6-0 Lamia",  # the name is the Basque mythical creature, not the Greek https://en.wikipedia.org/wiki/Lamia_(Basque_mythology)
         role="gronk!",
         role_child_branch_num=-2,
-        replacement_consist_id="chuggypig",  # this Joker ends with Gronk
         power_by_power_source={
             "STEAM": 350,
         },

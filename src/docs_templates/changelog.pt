@@ -3,12 +3,292 @@ Changelog
 
 
 ------------
-3.6.0 Release
+3.19.0 Release
+------------
+
+
+Not savegame compatible with Iron Horse releases before 3.19.0.
+
+
+*Changes*
+
+- added Gronks!
+    - 0-6-0 Fireball, 35 mph, 350 hp, available around 1862
+    - Progress, 35 mph, 400 hp, available around 1960
+- adjusted Magnum 70 to be Magnum 90, 8/8 long instead of 4/8 long, 900 hp
+- added twin-unit variant for Gronk (inspired by BR Class 13)
+- adjusted livery order for Ravensbourne metro unit
+
+
+------------
+3.18.0 Release
 ------------
 
 
 *Changes*
 
+- added metro passenger units
+    - Poplar, 45 mph, 600 hp, available around 1900
+    - Hammersmith, 55 mph, 900 hp, available around 1951
+    - Canary, 65 mph, 1100 hp, available around 2001
+- added metro mail units
+    - Ravensbourne, 45 mph, 600 hp, available around 1900
+    - Wandle, 55 mph, 900 hp, available around 1951
+    - Bankside, 65 mph, 1100 hp, available around 2001
+
+
+*Fixes*
+
+- set correct tail lights for Autocoach and some metro vehicles
+
+
+------------
+3.17.0 Release
+------------
+
+
+*Changes*
+
+- added metro locomotives
+    - Walbrook, 45 mph, 650 hp, available around 1901
+    - Borax, 55 mph, 950 hp, available around 1951
+    - Angerstein, 65 mph, 1250 hp, available around 2001
+
+
+*Docs*
+
+- added missing facts and descriptions for some metro vehicles
+
+
+------------
+3.16.0 Release
+------------
+
+
+*Changes*
+
+- added metro locomotives
+    - Debden, 45 mph, 600 hp, available around 1900
+    - Cringle, 55 mph, 900 hp, available around 1950
+    - Mulberry, 65 mph, 1200 hp, available around 2000
+- added metro Open Wagons
+- improved appearance of Serpentine and Longwater metro trains
+
+
+------------
+3.15.0 Release
+------------
+
+
+*Changes*
+
+- added livery variants for metro trains
+- adjusted metro train weights and power
+
+
+*Fixes*
+
+- fixed bad/missing roof pixels for some narrow gauge railcars
+- brake vans which use a specific sprite for some engines now also use the sprite for variants of that engine
+
+
+------------
+3.14.0 Release
+------------
+
+
+*Changes*
+
+- added Golfinho narrow gauge diesel railcar, 75 mph, 900 hp, available around 2010
+- adjusted running cost of Stratos narrow gauge diesel railcar
+- adjusted narrow gauge steam locomotive weights and tractive effort for game balance
+
+
+*Fixes*
+
+- too many visual effects for TGV-type trains (Brenner, Skerion etc)
+- not enough visual effects for combined passenger + mail railbuses (Snapper, Skipper etc)
+
+
+------------
+3.13.0 Release
+------------
+
+
+*Changes*
+
+- added Stratos narrow gauge diesel railcar, 75 mph, 1200 hp, available around 2010
+- added narrow gauge generation 4 vehicles
+    - medium and large Panoramic Coaches
+    - Panoramic Driving Trailer
+
+
+------------
+3.12.0 Release
+------------
+
+
+*Changes*
+
+- added engines
+    - Celt 2-8-4 steam freight engine, 60 mph, 1500 hp, available around 1930
+    - Lebeche narrow gauge diesel engine, 75 mph, 1200 hp, available around 2010
+    - Higuma narrow gauge diesel engine, 75 mph, 1600 hp, available around 2010
+- added narrow gauge generation 4 passenger vehicles
+    - medium and large Passenger Coaches
+    - Driving Trailer
+- reduced height of metro trains, so they look more like tube trains
+- adjusted some vehicle role strings for greater clarity
+
+
+*Fixes*
+
+- fixed bad/missing roof pixels for narrow gauge railcars and some mail cars
+
+
+------------
+3.11.0 Release
+------------
+
+
+*Changes*
+
+- added Snapper narrow gauge diesel railcar, 75 mph, available around 2010
+    - 2-unit version, 560 hp,
+    - single-unit version, 350 hp
+    - unpowered trailer
+- added Ruby narrow gauge diesel mail railcar, 75 mph, 600 hp, available around 2010
+- added generation 4 narrow gauge Mail Vans, 75 mph, available around 2010
+
+
+*Fixes*
+
+- Chronos trailer sprites were incorrect for some angles
+- tail lights were wrong for Mumble
+
+
+------------
+3.10.0 Release
+------------
+
+
+Not savegame compatible with Iron Horse releases before 3.8.0.
+
+
+*Changes*
+
+- added Cyclone, AC electric, 2200 hp, 120 mph, available around 1994
+
+
+------------
+3.9.0 Release
+------------
+
+
+Not savegame compatible with Iron Horse releases before 3.8.0.
+
+
+*Changes*
+
+- added Nimbus express passenger railcar (and trailers)
+    - 120 mph (140 mph on dedicated high speed rail)
+    - 1500 hp on diesel power, 2500 hp on AC electric power
+    - available around 1991
+
+
+------------
+3.8.0 Release
+------------
+
+
+Not savegame compatible with Iron Horse releases before 3.8.0.
+
+
+*Changes*
+
+- added Chronos high speed mail railcar (and trailers), 120 mph, 2800 hp, available around 1991
+- added liveries for:
+    - generation 5 High Speed Driving Van Trailer
+    - generation 5 Mail Vans
+
+
+*Fixes*
+
+- poor logic in a validation check caused a handful of wagons to have colliding numeric IDs
+    - some wagons may have been missing from the game
+    - some wagons would have been in wrong buy menu order, and/or variant groupings
+- hide type 2 reefer cars in simplified gameplay
+
+
+------------
+3.7.1 Release
+------------
+
+
+*Fixes*
+
+- symmetrical vehicles of length less than 8/8 were being drawn in the wrong position in many cases
+
+
+------------
+3.7.0 Release
+------------
+
+
+Not savegame compatible with Iron Horse releases before 3.3.0.
+
+
+*Changes*
+
+- added wagon types
+    - Enclosed Vehicle Transporters (variant of Vehicle Transporters)
+    - MGR Hood Hoppers (variant of MGR Hoppers)
+    - multiple types of Aggregate Dump Wagons, including a randomised version
+    - multiple types of Aggregate Hoppers, including a randomised version
+    - generation 3 large Express Van
+- improved appearance of Rock Hoppers
+- improved appearance of generation 5 Hoppers and High Side Hoppers
+- 'ARC' livery for Cheddar Valley diesel engine
+- split Car Transporters from Vehicle Transporters in purchase menu
+- allow Vehicle Transporters to refit to engineering supplies and farm supplies cargos
+- move the intro date for narrow gauge Sliding Wall Vans to 1975
+
+
+*Docs*
+
+- (fix) provide missing default "blue" livery for snowplough and autocoach
+
+
+*Fixes*
+
+- red tail lights were out of position if a vehicle was flipped
+- some vehicles had incorrect tail lights
+- Olympic railcar had incomplete restaurant car sprites for one livery
+- 6/8 narrow gauge pax and mail cars had missing pixels
+
+
+*Codechanges*
+
+- moved all IDs for non-articulated vehicles out of the articulated ID range (IDs < 16384)
+- various interventions to prevent exhaustion of concurrent varaction 2 IDs
+- removed duplicate realsprites for symmetric vehicles of length < 8/8 (reducing grf size by about ~6 MB)
+- improved compile time
+- use consistent 'type_1', 'type_2', 'type_n' approach to similar base wagon types which use different gestalts to provide variants
+- skip unnecessary nmlc palette validation, saving potentially several seconds per compile
+- organise contents of src/vehicles into a sub-directory per roster
+- use dynamic imports for vehicle modules, reducing declarative boilerplate required to add engines and wagons
+- provide support for rosters to reuse wagon modules from another roster
+- provide reusable support for delegating vehicle spritesheet source to another vehicle, via input_spritesheet_delegate_id
+- switch release archive format from .tar to .zip, as it's much smaller and faster to upload to bananas with zip compression
+- removed some legacy Makefile targets and args
+
+
+------------
+3.6.0 Release
+------------
+
+
+*Changes*
 
 - added Intercity Express trains (very high speed, with distributed traction)
     - Alizé (inspired by TGV), 155 mph, 1900 hp per unit, available around 1987
