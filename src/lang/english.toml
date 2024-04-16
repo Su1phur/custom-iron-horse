@@ -70,6 +70,12 @@ base = "Iron Horse now includes the railtypes from Termite. Please remove Termit
 ibex = "Iron Ibex includes the railtypes from Termite. Please remove Termite from the NewGRF list and try a new game. Thanks."
 moose = "Iron Moose includes the railtypes from Termite. Please remove Termite from the NewGRF list and try a new game. Thanks."
 
+[STR_PARAM_FOAMER_FACT]
+base = "Display Foamer Facts"
+
+[STR_PARAM_FOAMER_FACT_DESC]
+base = "Displays Foamer Facts in Buy Menu"
+
 # default colours - reuses the constants for the company colour names, so 'COLOUR_' is repeated again in the trailing part of some string names
 [STR_COLOUR_NAME_COLOUR_DARK_BLUE]
 base = "Dark Blue"
@@ -830,6 +836,9 @@ base = "{}Sprites Complete: {GOLD}Yup"
 
 [STR_SPRITES_INCOMPLETE]
 base = "{}Sprites Complete: {GOLD}Nope"
+
+[STR_BUY_MENU_FOAMER_FACT]
+base = "{}Inspired by: {FOAMER_FACTS}"
 
 ## railtypes
 # lgv track strings

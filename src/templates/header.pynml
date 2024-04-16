@@ -63,6 +63,15 @@ grf {
 			bit: 1;
 		}
 	}
+	param 8 {
+		param_foamer_facts {
+			name: string(STR_PARAM_FOAMER_FACT);
+			desc: string(STR_PARAM_FOAMER_FACT_DESC);
+			type: bool;
+			def_value: 0;
+			bit: 1;
+		}
+	}
 }
 
 // error if inflation is on for the game, as it leads to unplayable outcomes for players
